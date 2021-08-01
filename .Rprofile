@@ -3,7 +3,7 @@ suppressPackageStartupMessages(
   {
     library(data.table)    # Fast Data processing.
     library(tictoc)        # To measure computing time.
-    library(tidytable)     # data.table with dplyr syntax.
+    
     library(inspectdf)     # Automatic EDA.
     library(DataExplorer)  # Automatic EDA.
     library(dplyr)         # Data processing with pipes.
