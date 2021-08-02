@@ -168,6 +168,7 @@ mymodel <- ranger(
   status_group ~ . , 
   data = trainOrinumlogicmputCate,
   importance = 'impurity',
+  num.trees = 5000,
   verbose = TRUE
 )
 toc()
@@ -213,7 +214,7 @@ ggsave(
 
 #----- INI --------- PREDICTION + SUBMISSION
 tic()
-mypred <- predict( mymodel, testOrinumlogicimputCate)$predictions
+mypred <- predict( mymodel, testbis)$predictions
 toc()
 
 mysub <- data.frame(

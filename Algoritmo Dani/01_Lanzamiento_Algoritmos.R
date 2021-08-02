@@ -23,9 +23,103 @@ library(xgboost)
 library(caretEnsemble)
 
 
+varObjBin <- trainbis$stat
+
+
+# XGBOOST
+library(xgboost)
+
+status_group = trainbis$status_group
+label = as.integer(trainbis$status_group)-1
+trainbis$status_group = NULL
+
+
+n = nrow(trainbis)
+train.index = sample(n,floor(0.9*n))
+train.data = as.matrix(trainbis[train.index,])
+train.label = label[train.index]
+test.data = as.matrix(trainbis[-train.index,])
+test.label = label[-train.index]
+
+xgb.train = xgb.DMatrix(data=train.data,label=train.label)
+xgb.test = xgb.DMatrix(data=test.data,label=test.label)
+
+num_class = length(levels(status_group))
+
+params = list(
+  booster="gbtree",
+  eta=0.001,
+  max_depth=5,
+  gamma=3,
+  subsample=0.75,
+  colsample_bytree=1,
+  objective="multi:softprob",
+  eval_metric="mlogloss",
+  num_class=num_class
+)
+
+xgb.fit=xgb.train(
+  params=params,
+  data=xgb.train,
+  nrounds=100,
+  nthreads=1,
+  early_stopping_rounds=10,
+  watchlist=list(val1=xgb.train,val2=xgb.test),
+  verbose=0
+)
+
+# Review the final model and results
+xgb.fit
+
+
+test_final.data  = as.matrix(testbis)
+
+
+
+
+xgb.pred = predict(xgb.fit,test.data,reshape=T)
+xgb.pred = as.data.frame(xgb.pred)
+colnames(xgb.pred) = levels(status_group)
+
+xgb.pred$prediction = apply(xgb.pred,1,function(x) colnames(xgb.pred)[which.max(x)])
+xgb.pred$label = levels(status_group)[test.label+1]
+
+result = sum(xgb.pred$prediction==xgb.pred$label)/nrow(xgb.pred)
+print(paste("Final Accuracy =",sprintf("%1.2f%%", 100*result)))
+
+
+
+# Cruzada de arboles
+
+library(caret)
+
+set.seed(12345)
+
+gbmgrid <- expand.grid(shrinkage=c(0.1,0.05,0.03,0.01,0.001),
+                       n.minobsinnode=c(5,10,20),
+                       n.trees=c(100,500,1000,5000),
+                       interaction.depth=c(2))
+
+
+control<-trainControl(method = "cv",number=4,savePredictions = "all",
+                      classProbs=TRUE) 
+
+
+gbm <- train(make.names(factor(status_group))~.,data=trainbis,
+            method="gbm",trControl=control,tuneGrid=gbmgrid,
+            distribution="bernoulli", bag.fraction=1,verbose=FALSE)
+
+gbm
+
+plot(gbm)
+# coger de estas graficas los puntos ganadores y hacer el modelo
+# de cada uno de ellos, para sacar el diagrama de cajas y bigotes
+
+
+
 # 1. Regresión logística --------------------------------------------------
 
-modeloInicial<-glm(varObjBin~.,data=data_train,family=binomial)
+modeloInicial<-glm(status_group.functional~.,data=trainbis,family=binomial)
 summary(modeloInicial)
 pseudoR2(modeloInicial,data_train,"varObjBin")
 pseudoR2(modeloInicial,data_test,"varObjBin")
@@ -120,9 +214,8 @@ axis(3, at=1:length(modelos), labels=sapply(modelos,function(x) length(coef(x)))
 aggregate(roc~modelo, data = total, function(x) c(mean(x),sd(x))) #muy similares
 #elegimos el modeloStepBIC_transf es casi igual que el mejor y tiene menos par?metros
 
+
 # 3. Cruzadas -------------------------------------------------------------
-
-
 
 
 medias1<-cruzadalogistica(data=saheartbis,
