@@ -35,78 +35,11 @@ trainOri <- merge(trainvarOri, trainlabOri, by.x = c('id'), by.y = c('id'))
 rm(trainvarOri)
 rm(trainlabOri)
 
+# Quito el recorded_by por ser constante
 trainOri <- trainOri[,-c(20)]
 testOri <- testOri[,-c(20)]
 #------- END ------- Data Loading
 
-# EDA (with inspectdf) ----------------------------------------------------
-
-
-# # ------- INI ------- EDA (with inspectdf)
-# # Horizontal bar plot for categorical column composition
- # x <- inspect_cat(trainOri) 
- # show_plot(x)
- 
- #-- Niveles de las categoricas.
-     # recorded_by: A tirar. Es cte!.
-     # subvillaje, ward, wpt_names : Muchos niveles distintos
-     # Cuidadín con: funder, installer, scheme_name
- #-- Parecidas:
-     # payment - payment_type
-     # quantity - quantity_group
-     # source - source_type
-
-# # Correlation betwee numeric columns + confidence intervals
- # x <- inspect_cor(trainOri)
- # show_plot(x)
- #-- Correlación: 
-     # district_code/region_code ~0.6
-     # construction_year/gps_height ~0.6
-     # latitude / longitude ~ -0.35
-
-
-# # Bar plot of most frequent category for each categorical column
- # x <- inspect_imb(trainOri)
- # show_plot(x)
- 
-# # Bar plot showing memory usage for each column
- # x <- inspect_mem(trainOri)
- # show_plot(x)
-# 
-# # Occurence of NAs in each column ranked in descending order
- # x <- inspect_na(trainOri)
- # show_plot(x)
- #-- NAs:
-     # public_meeting: 5.6%
-     # permit: 5.1%
-     # resto de vars: limpias.
- 
-# # Histograms for numeric columns
- # x <- inspect_num(trainOri)
- # show_plot(x)
- #-- Hist de numericas.
- # amount_tsh: outliers (pocos)
- # construction_year: hay muchos ceros (NAs enmascarados)
- # district_code: ¿categórico?
- # gps_height: valores negativos y de ceros?.
- # latitude/longitud: ¿ceros?.
- # num_private: ¿ceros?
- # population: outliers / ceros?
- # region_code: ¿categorica?.
- 
-
-# # Barplot of column types
- # x <- inspect_types(trainOri)
- # show_plot(x)
- # 
-#------- END ------- EDA (with inspectdf)
-
-
- 
- 
- 
-
- 
 
 # Tratamiento de Missing --------------------------------------------------
 
@@ -127,16 +60,12 @@ testOri <- testOri[,-c(20)]
  dput(train_factor)
  
  # Observar gráficamente missing y estructura
-
-
- #dfplot(trainOri)
  
  trainmis1                <-as.data.frame(sapply(trainOri[,train_num],function(x) sum(is.na(x))))
  names(trainmis1)[1]      <-"nmiss"
  
  testmis1                 <-as.data.frame(sapply(testOri[,test_num],function(x) sum(is.na(x))))
  names(testmis1)[1]       <-"nmiss"
- 
  
  # 2)OBSERVAR LOS MISSING EN VARIABLES DE CARACTER O FACTORES
 
@@ -152,7 +81,6 @@ testOri <- testOri[,-c(20)]
  
  tablatotaltrain <-as.data.frame(rbind(trainmis1,trainmis2))
  tablatotaltest  <- as.data.frame(rbind(testmis1, testmis2))
- 
  
  # b) lista variables con más de k=300 missing
  # Primero guardo los nombres
@@ -174,7 +102,7 @@ testOri <- testOri[,-c(20)]
 
  # *******************************************************************
  # ANTES DE IMPUTAR, BUSCAMOS OBSERVACIONES CON MÁS DE K missing, sabiendo 
- # en nuestro ejemplo hay 82 variables, eliminaremos observaciones con más de 
+ # en nuestro ejemplo hay  variables, eliminaremos observaciones con más de 
  # 10 missing (esto es arbitrario)
  
  train2$contarmis<- apply(train2, 1, function(x) sum(is.na(x)))
@@ -212,7 +140,7 @@ testOri <- testOri[,-c(20)]
  # 7) IMPUTAR POR LA MODA EN CARACTER
  
  fullcartrain <- intersect(listamisimptrain, train_carac)
- fullcartest  <- intersect (listamisimptest , test_carac)
+ fullcartest  <- intersect(listamisimptest , test_carac)
  
  
  Mode <- function(x){
@@ -225,12 +153,10 @@ testOri <- testOri[,-c(20)]
  
  # 8) UNIR a) imputadas continuas b) imputadas caracter c) columnas complementarias
  
- #train_fin <- as.data.frame(cbind(train3,train4,train2[,listacompletrain]))
- #test_fin  <- as.data.frame(cbind(test3, test4, test2[,listacompletest]))
  train_fin <- as.data.frame(cbind( train2[,listacompletrain]))
  test_fin  <- as.data.frame(cbind( test2[,listacompletest]))
  
- rm(list=setdiff(ls(), c("train_fin", "test_fin")))
+ rm(list=setdiff(ls(), c("train_fin", "test_fin", "testOri")))
 
 # Tratamiento variables categóricas (dummies) ---------------------------------------
 
@@ -269,12 +195,15 @@ testOri <- testOri[,-c(20)]
  
  test_fin$status_group <- "BORRAR"
  
+ 
  full <- rbind(test_fin, train_fin)
- full <- full[,-c(15,18,13)]
- full_carac <- names(Filter(is.character, full))
+ 
+ full_carac <- names(Filter(is.character, full[,-c(15,18,13,16,11,12,17,20,21,22)]))
  
  fullbis <- dummy.data.frame(full, full_carac, sep = ".")
  
+ fullbis <- cbind(fullbis, full[, c(15,18,13,11,16,12,17,20,21,22)])
+
  # Para borrar las dummies con menos de k observaciones se utiliza el 
  # listado de frecuencias frecu obtenido anteriormente
  
@@ -316,41 +245,93 @@ testOri <- testOri[,-c(20)]
  
  trainbis$status_group <- as.factor(trainbis$status_group)
  names(trainbis)       <-make.names(names(trainbis), unique=TRUE)
- 
+ names(testbis)       <-make.names(names(testbis), unique=TRUE)
  
  # Lanzamiento del modelo
  
  tic()
- mymodel <- ranger(status_group~., 
-     data = trainbis,
-     num.trees = 5000,
-     importance = 'impurity',
-     verbose = TRUE
- )
+ 
+ #-- Grid Search
+ mynumtre <- c(500,1000)
+ mymtry <- c(3)
+ mymnsi <- c(1)
+ myseed <- c(1234, 8765)
+ migrid <- expand.grid(numtre = mynumtre, mitry = mymtry, mymnsi = mymnsi, seed =  myseed)
+ migrid$mierr <- 0
+ 
+ tic()
+ for (i in 1:nrow(migrid)) {
+    set.seed(migrid$myseed[i])
+     mymodel <- ranger( 
+         
+         num.trees     = migrid$numtre[i],
+         mtry          = migrid$mimtry[i],
+         min.node.size =  migrid$mymnsi[i],
+         
+         status_group ~ . , 
+         data          = trainbis,
+         importance    = 'impurity',
+         verbose       = TRUE
+     )
+     
+     acierto_val <- 1 - mymodel$prediction.error
+     # acierto_val
+     
+     migrid$mierr[i] <- acierto_val
+     print(migrid[i,])
+     
+ } 
  toc()
  
+ #-- Best iteration
+ best_iter <- migrid %>%
+     filter( mierr == max(mierr))
+ 
+ #   numtre mitry mymnsi     mierr
+ # 1    600     5      2 0.8127778
+ 
+ #-- Run model for the best iteration.
+ #
+ set.seed(best_iter$myseed[1])
+ mymodel <- ranger( 
+     status_group ~ . , 
+     data          = trainbis,
+     num.trees     = best_iter$numtre[1],
+     mtry          = best_iter$mimtry[1],
+     min.node.size = best_iter$mymnsi[1],
+     importance    = 'impurity',
+     verbose       = TRUE
+ )
+ 
  acierto_val <- 1 - mymodel$prediction.error
- acierto_val
- 
-# Transformaciones --------------------------------------------------------
- train_fin$status_
- #Obtenemos todas las transformaciones
- Transfbin<-Transf_Auto(Filter(is.numeric, train_fin), train_fin$status_group)#indico que no quiero transformar las aleatorias (estan en las columnas 13 y 14)
- names(Transfbin)
- 
+acierto_val
 
- 
-# Discretización ----------------------------------------------------------
+#------ END ------ MODELING - RANDOMFOREST - ranger
 
- 
- #Pruebo la discretizaci?n de las variables cuantitativas
- discbin<-droplevels(optbin(data.frame(Filter(is.numeric, input[,-c(14,15)]),varObjBin)))[,-(ncol(Filter(is.numeric, input[,-c(14,15)]))+1)]
- names(discbin)<-paste("disc", names(discbin), sep = "_")
- 
- #Verificamos el reparto de las nuevas categor?as
- apply(discCont,2,freq) #ServiciosPtge, ConstruccionPtge, AgricultureUnemploymentPtge, IndustriaPtge tienen categor?as infrarrepresentadas
- # Como la imputaci?n ha sido aleatoria estos resultados pueden variar de una ejecuci?n a otra
- 
- discCont$disc_ServiciosPtge<-car::recode(discCont$disc_ServiciosPtge, "c('(-0.0717,3.33]','(3.33,7.92]', '(7.92,12.4]')='(-0.0717,12.4]'")
- 
- datos_todobin<-data.frame(varObjBin,input,Transfbin,discbin)
+#----- INI --------- PREDICTION + SUBMISSION
+#
+
+tic()
+mypred <- predict( mymodel, testbis)$predictions
+toc()
+
+mysub <- data.frame(
+    id = testbis$id,
+    status_group = mypred
+)
+
+var_impor <- as.data.frame(mymodel$variable.importance)
+names(var_impor) <- c('importancia') 
+var_impor$variables <- rownames(var_impor)
+rownames(var_impor) <- NULL
+
+fwrite(
+    mysub, 
+    paste("./submissions/07_final_dia_de_clase_", 
+          round(acierto_val,4),
+          "_numvars_",  nrow(var_impor), 
+          "_.csv", sep =  "")
+)
+
+
+#trees 1000 - min.n.s = 3 - 10 mitry - Local: 0.81678 - Plataforma: 0.8001

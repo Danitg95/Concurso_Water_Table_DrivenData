@@ -1,0 +1,21 @@
+---
+title: "Entrega Aplicaciones del Big Data en la empresa"
+author: "Daniel Toral García"
+date: "23/10/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE,warning = FALSE, 
+                      message = FALSE, include=TRUE, 
+                      fig.align = "center")
+```
+
+## Entrega Aplicaciones del Big Data en la empresa
+
+Sección 1: Resumen de lo conseguido durante el curso
+
+```{r cars}
+summary(cars)
+```
